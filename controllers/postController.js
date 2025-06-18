@@ -1,4 +1,6 @@
 const Post = require("../models/postSchema");
+const User = require("../models/userSchema");
+const AppError = require("../utils/AppError");
 
 /*
  @access public 
@@ -6,12 +8,13 @@ const Post = require("../models/postSchema");
  @endpoint /api/v1/createPost
  */
 exports.createPost = async (req, res) => {
+  console.log("qwer", req.user._id);
   try {
     const payload = {
       title: req.body.title,
       category: req.body.category,
       description: req.body.description,
-      authorId: req.user.id,
+      authorId: req.user._id,
     };
 
     const post = await Post.create(payload);
@@ -74,14 +77,29 @@ exports.getSinglePost = async (req, res) => {
  @endpoint /api/v1/updateSinglePost/:id
  */
 
-exports.updateSinglePost = async (req, res) => {
+exports.updateSinglePost = async (req, res, next) => {
   try {
-    const id = req.params.id;
-    const post = await Post.updateOne({ _id: id }, { $set: req.body });
+    const { id } = req.params;
+    let query = { _id: id };
+
+    if (req.user.role !== "admin") {
+      query.authorId = req.user.id;
+    }
+
+    const updatedPost = await Post.findOneAndUpdate(
+      query,
+      { $set: req.body },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedPost) {
+      return next(new AppError("Post not found or unauthorized", 404));
+    }
+
     res.status(200).json({
       status: "success",
       data: {
-        post,
+        updatedPost,
       },
     });
   } catch (error) {
@@ -95,15 +113,27 @@ exports.updateSinglePost = async (req, res) => {
  @endpoint /api/v1/deleteSinglePost/:id
  */
 
-exports.deleteSinglePost = async (req, res) => {
+exports.deleteSinglePost = async (req, res, next) => {
   try {
     const id = req.params.id;
-    await Post.deleteOne({ _id: id });
-    res.status(204).json({
+    let query = { _id: id };
+
+    if (req.user.role !== "admin") {
+      query.authorId = req.user.id;
+    }
+
+    const deletedPost = await Post.findOneAndDelete(query);
+
+    if (!deletedPost) {
+      return next(new AppError("Post not found or you're not authorized", 404));
+    }
+
+    res.status(200).json({
       status: "success",
+      message: "Post deleted successfully",
     });
   } catch (error) {
-    console.log(error);
+    next(error);
   }
 };
 
@@ -130,3 +160,27 @@ exports.deleteSinglePost = async (req, res) => {
 //     console.log(error);
 //   }
 // };
+
+/*
+ @access private 
+ @http method get
+ @endpoint /api/v1/auth/getAllCurrentUserData
+ */
+
+exports.getCurrentUserPostData = async (req, res, next) => {
+  try {
+    const post = await Post.find({ authorId: req.user.id });
+    if (!post) {
+      return next(new AppError("Post not created", 204));
+    }
+    res.status(200).json({
+      status: "success",
+      numberOfPost: post.length,
+      data: {
+        post,
+      },
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};

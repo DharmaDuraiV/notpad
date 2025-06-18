@@ -7,8 +7,15 @@ router.get("/getAllPost", protect, postController.getAllPost);
 router.post(
   "/createPost",
   protect,
-  authorize("admin"),
+  authorize("publisher", "admin"),
   postController.createPost
+);
+
+router.get(
+  "/getCurrentUserPostData",
+  protect,
+  authorize("publisher", "admin"),
+  postController.getCurrentUserPostData
 );
 
 router.post("/getSinglePost/:id", protect, postController.getSinglePost);
@@ -16,13 +23,13 @@ router.post("/getSinglePost/:id", protect, postController.getSinglePost);
 router.put(
   "/updateSinglePost/:id",
   protect,
-  authorize("admin"),
+  authorize("admin", "publisher"),
   postController.updateSinglePost
 );
 router.delete(
   "/deleteSinglePost/:id",
   protect,
-  authorize("admin"),
+  authorize("admin", "publisher"),
   postController.deleteSinglePost
 );
 

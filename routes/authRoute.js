@@ -10,5 +10,8 @@ router.post(
 );
 
 router.post("/login", authController.login);
+router.get("/logout", authController.logout);
+
+router.put("/updateSingleuser/:id", authController.updateSingleuser);
 
 module.exports = router;
